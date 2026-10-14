@@ -1,0 +1,46 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smart Admission Desk: skip the admission queue</title>
+<meta name="description" content="Submit documents, pay fees and track renewals online. Book a token and walk in only when it is your turn.">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#E9EFF1;--ink:#10242B;--mute:#4A636C;--acc:#0B6E6E;--amber:#FFB000;--line:#C9D6DB}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.6 'Atkinson Hyperlegible',system-ui,sans-serif}
+a{color:inherit}.wrap{max-width:1000px;margin:0 auto;padding:0 20px}
+header{display:flex;justify-content:space-between;align-items:center;padding:18px 0}
+header b{font-size:19px}.btn{display:inline-block;background:var(--acc);color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:700}
+.btn.alt{background:transparent;color:var(--ink);border:2px solid var(--ink)}.btn:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+.hero{display:grid;grid-template-columns:1.2fr 1fr;gap:40px;align-items:center;padding:50px 0 60px}
+h1{font-size:clamp(34px,5.5vw,56px);line-height:1.08;margin:0 0 16px;letter-spacing:-.02em}
+.hero p{color:var(--mute);max-width:46ch;margin:0 0 24px}.hero .btn{margin-right:10px}
+.ticket{background:var(--amber);padding:26px;border-radius:10px;transform:rotate(2deg);
+ -webkit-mask:radial-gradient(circle 11px at 0 62%,#0000 98%,#000) left/51% 100% no-repeat,radial-gradient(circle 11px at 100% 62%,#0000 98%,#000) right/51% 100% no-repeat;
+ mask:radial-gradient(circle 11px at 0 62%,#0000 98%,#000) left/51% 100% no-repeat,radial-gradient(circle 11px at 100% 62%,#0000 98%,#000) right/51% 100% no-repeat}
+.ticket small{display:block}.ticket .n{font-size:84px;font-weight:700;line-height:1;margin:6px 0}.ticket hr{border:0;border-top:2px dashed #10242B66;margin:14px 0}
+section.band{background:#fff;padding:56px 0}h2{font-size:28px;margin:0 0 24px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:28px}.grid h3{margin:0 0 4px;font-size:19px}.grid p{margin:0;color:var(--mute)}
+ol{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;counter-reset:s}
+ol li{counter-increment:s;border-top:4px solid var(--acc);padding-top:10px}ol li:before{content:counter(s);font-size:30px;font-weight:700;display:block}
+.cta{padding:64px 0;text-align:center}footer{padding:24px 0;color:var(--mute);font-size:15px;text-align:center}
+@media(max-width:760px){.hero{grid-template-columns:1fr}.ticket{transform:none}}
+@media(prefers-reduced-motion:no-preference){.ticket{animation:in .7s ease-out}@keyframes in{from{opacity:0;transform:translateY(16px) rotate(2deg)}}}
+</style></head><body>
+<div class="wrap"><header><b>Smart Admission Desk</b><a class="btn" href="/app.html">Sign in</a></header>
+<div class="hero"><div>
+<h1>Skip the admission queue.</h1>
+<p>Upload documents from your room, pay fees online, and track renewals step by step. Visit the office only when your token is called.</p>
+<a class="btn" href="/app.html">Get my token</a><a class="btn alt" href="#how">How it works</a></div>
+<div class="ticket" aria-label="Sample queue token"><small>Original document verification</small><div class="n">#14</div><hr>
+<small>3 people ahead · about 15 min</small><small>Now serving: #11</small></div></div></div>
+<section class="band"><div class="wrap"><h2>Everything the admission counter does, without the line</h2><div class="grid">
+<div><h3>Documents checked instantly</h3><p>AI reads your upload and tells you right away if it is blurry, wrong, or has a mismatched name.</p></div>
+<div><h3>A token, not a queue</h3><p>Book a slot and see how many people are ahead of you. Come when you are next.</p></div>
+<div><h3>Fees and receipts online</h3><p>Pay dues, download receipts, and see every deadline in one place.</p></div>
+<div><h3>Renewals you can track</h3><p>Renewal forms and certificates move from submitted to ready, and you see each step.</p></div>
+<div><h3>Answers at any hour</h3><p>Ask the assistant which documents you need, using your college's own rules.</p></div>
+<div><h3>A clear view for staff</h3><p>The admin desk shows today's queue, open requests, and which documents get rejected most.</p></div></div></div></section>
+<section id="how" class="wrap" style="padding:56px 20px"><h2>How it works</h2><ol>
+<li><b>Upload</b><br>Add your documents and fix any issue the AI finds.</li><li><b>Pay</b><br>Clear your fees online and get a receipt.</li>
+<li><b>Book</b><br>Pick a slot only if a visit is needed.</li><li><b>Collect</b><br>Walk in when called and collect your certificate.</li></ol></section>
+<section class="cta wrap"><h2>Save your next two hours</h2><a class="btn" href="/app.html">Open the admission desk</a></section>
+<footer>Smart Admission Desk · Built for the Smart Campus Hackathon</footer>
+</body></html>

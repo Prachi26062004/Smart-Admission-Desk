@@ -1,0 +1,86 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smart Admission Desk</title>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#E9EFF1;--ink:#10242B;--mute:#587079;--card:#fff;--acc:#0B6E6E;--amber:#FFB000;--red:#C4372B;--line:#C9D6DB}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 'Atkinson Hyperlegible',system-ui,sans-serif}
+header{background:var(--ink);color:#fff;padding:14px 20px;display:flex;justify-content:space-between;align-items:center}
+h1{font-size:20px;margin:0}main{max-width:860px;margin:20px auto;padding:0 16px}
+nav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+nav button{background:#fff;border:1px solid var(--line);padding:8px 14px;border-radius:6px;cursor:pointer;font:inherit}
+nav button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:14px}
+h2{margin:0 0 10px;font-size:18px}input,select,button.p{font:inherit;padding:9px 11px;border:1px solid var(--line);border-radius:6px;margin:3px 0}
+input,select{width:100%}button.p{background:var(--acc);color:#fff;border:0;cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--amber)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}.row:last-child{border:0}
+.tag{padding:2px 9px;border-radius:99px;font-size:13px;background:var(--line)}.ok{background:#CBEBDD}.bad{background:#F6D2CD}.warn{background:#FFE7A8}
+.ticket{background:var(--amber);border-radius:8px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;
+ -webkit-mask:radial-gradient(circle 9px at 0 50%,#0000 98%,#000) left/51% 100% no-repeat,radial-gradient(circle 9px at 100% 50%,#0000 98%,#000) right/51% 100% no-repeat;
+ mask:radial-gradient(circle 9px at 0 50%,#0000 98%,#000) left/51% 100% no-repeat,radial-gradient(circle 9px at 100% 50%,#0000 98%,#000) right/51% 100% no-repeat}
+.ticket b{font-size:44px;line-height:1}.steps{display:flex;gap:4px;margin-top:6px}.steps i{flex:1;height:6px;border-radius:3px;background:var(--line)}.steps i.on{background:var(--acc)}
+#chatlog{max-height:260px;overflow:auto}.msg{padding:6px 0}.hide{display:none}.err{color:var(--red)}
+</style></head><body>
+<header><h1>Smart Admission Desk</h1><span id="who"></span></header>
+<main>
+<section id="login" class="card" style="max-width:380px;margin:40px auto">
+ <h2 id="ltitle">Sign in</h2>
+ <div id="regfields" class="hide"><input id="name" placeholder="Full name"><input id="roll" placeholder="Roll number"></div>
+ <input id="email" type="email" placeholder="Email"><input id="pw" type="password" placeholder="Password">
+ <button class="p" onclick="submitAuth()">Continue</button> <a href="#" onclick="toggleReg();return false">Create an account</a>
+ <p id="lerr" class="err"></p><small>Admin demo: admin@college.edu / admin123</small>
+</section>
+<div id="app" class="hide">
+<nav id="tabs"></nav>
+<section id="t-docs"><div class="card"><h2>Upload a document</h2>
+ <select id="dtype"><option>12th marksheet</option><option>ID proof</option><option>Income certificate</option><option>Previous year fee receipt</option></select>
+ <input type="file" id="dfile" accept="image/*,application/pdf"><button class="p" onclick="upload()">Check and submit</button><p id="dres"></p></div>
+ <div class="card"><h2>Your documents</h2><div id="dlist"></div></div></section>
+<section id="t-fees" class="hide"><div class="card"><h2>Fees</h2><div id="flist"></div></div></section>
+<section id="t-queue" class="hide"><div id="mytokens"></div><div class="card"><h2>Book a visit</h2>
+ <select id="purpose"><option>Original document verification</option><option>Fee counter</option><option>Collect certificate</option></select>
+ <input type="date" id="sdate"><select id="stime"></select><button class="p" onclick="book()">Get my token</button><p id="qerr" class="err"></p></div></section>
+<section id="t-req" class="hide"><div class="card"><h2>New request</h2>
+ <select id="rtype"><option value="renewal">Renewal form</option><option value="bonafide">Bonafide certificate</option><option value="no_dues">No-dues certificate</option></select>
+ <button class="p" onclick="newReq()">Submit request</button></div><div class="card"><h2>Track requests</h2><div id="rlist"></div></div></section>
+<section id="t-chat" class="hide"><div class="card"><h2>Ask the admission assistant</h2><div id="chatlog"></div>
+ <input id="q" placeholder="Which documents do I need for renewal?" onkeydown="if(event.key==='Enter')send()"><button class="p" onclick="send()">Ask</button></div></section>
+<section id="t-admin" class="hide"><div id="stats" class="card"></div>
+ <div class="card"><h2>Today's queue</h2><button class="p" onclick="nextTok()">Call next token</button><div id="aq"></div></div>
+ <div class="card"><h2>Open requests</h2><div id="ar"></div></div></section>
+</div></main>
+<script>
+const $=id=>document.getElementById(id);let tok='',role='',reg=false;
+const api=async(u,o={})=>{const r=await fetch('/api'+u,{...o,headers:{...(o.body&&!(o.body instanceof FormData)?{'content-type':'application/json'}:{}),authorization:'Bearer '+tok}});
+ const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Something went wrong');return d};
+const post=(u,b)=>api(u,{method:'POST',body:JSON.stringify(b||{})});
+function toggleReg(){reg=!reg;$('regfields').classList.toggle('hide',!reg);$('ltitle').textContent=reg?'Create account':'Sign in'}
+async function submitAuth(){try{$('lerr').textContent='';
+ if(reg){await post('/auth/register',{name:$('name').value,roll_no:$('roll').value,email:$('email').value,password:$('pw').value});toggleReg();$('lerr').textContent='Account created. Sign in now.';return}
+ const d=await post('/auth/login',{email:$('email').value,password:$('pw').value});tok=d.token;role=d.role;$('who').textContent=d.name;
+ $('login').classList.add('hide');$('app').classList.remove('hide');initTabs()}catch(e){$('lerr').textContent=e.message}}
+function initTabs(){const t=role==='admin'?[['admin','Admin desk']]:[['docs','Documents'],['fees','Fees'],['queue','Queue'],['req','Requests'],['chat','Assistant']];
+ $('tabs').innerHTML=t.map(([k,l])=>`<button id="b-${k}" onclick="show('${k}')">${l}</button>`).join('');show(t[0][0]);
+ $('sdate').value=new Date().toISOString().slice(0,10);$('stime').innerHTML=['10:00','11:00','12:00','14:00','15:00'].map(x=>`<option>${x}</option>`).join('')}
+function show(k){document.querySelectorAll('main section[id^=t-]').forEach(s=>s.classList.add('hide'));$('t-'+k).classList.remove('hide');
+ document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.id==='b-'+k));({docs:loadDocs,fees:loadFees,queue:loadQueue,req:loadReq,admin:loadAdmin})[k]?.()}
+const tag=s=>`<span class="tag ${{accepted:'ok',paid:'ok',rejected:'bad',due:'warn',review:'warn'}[s]||''}">${s}</span>`;
+async function upload(){const f=$('dfile').files[0];if(!f)return;const fd=new FormData();fd.append('file',f);fd.append('docType',$('dtype').value);
+ $('dres').textContent='Checking...';try{const d=await api('/documents',{method:'POST',body:fd});
+ $('dres').innerHTML=tag(d.ai.status)+' '+(d.ai.issues.join(' ')||'Document looks good.');loadDocs()}catch(e){$('dres').textContent=e.message}}
+async function loadDocs(){const d=await api('/documents');$('dlist').innerHTML=d.map(x=>`<div class="row"><span>${x.docType}<br><small>${x.ai.issues.join(' ')}</small></span>${tag(x.ai.status)}</div>`).join('')||'No documents yet. Upload one above.'}
+async function loadFees(){const d=await api('/fees');$('flist').innerHTML=d.map(f=>`<div class="row"><span>${f.label}<br><small>Rs ${f.amount} · due ${f.due_date.slice(0,10)}${f.receipt_no?' · '+f.receipt_no:''}</small></span>
+ ${f.status==='due'?`<button class="p" onclick="pay(${f.id})">Pay now</button>`:tag('paid')}</div>`).join('')}
+async function pay(id){await post('/fees/'+id+'/pay');loadFees()}
+async function book(){try{$('qerr').textContent='';await post('/tokens',{purpose:$('purpose').value,slot_date:$('sdate').value,slot_time:$('stime').value});loadQueue()}catch(e){$('qerr').textContent=e.message}}
+async function loadQueue(){const d=await api('/tokens/mine');$('mytokens').innerHTML=d.filter(t=>['waiting','serving'].includes(t.status)).map(t=>`<div class="ticket"><div><b>#${t.token_no}</b></div>
+ <div style="text-align:right">${t.purpose}<br>${t.status==='serving'?'Your turn. Go to the counter.':`${t.ahead} ahead · about ${t.wait_min} min`}<br>Now serving: ${t.now_serving||'-'}</div></div>`).join('')}
+async function newReq(){await post('/requests',{type:$('rtype').value});loadReq()}
+const S=['submitted','verified','approved','ready'];
+async function loadReq(){const d=await api('/requests');$('rlist').innerHTML=d.map(r=>`<div style="padding:8px 0"><b>${r.type.replace('_',' ')}</b> · ${r.status}<div class="steps">${S.map((s,i)=>`<i class="${i<=S.indexOf(r.status)?'on':''}"></i>`).join('')}</div></div>`).join('')||'No requests yet.'}
+async function send(){const q=$('q').value;if(!q)return;$('q').value='';$('chatlog').innerHTML+=`<div class="msg"><b>You:</b> ${q}</div>`;const d=await post('/chat',{q});$('chatlog').innerHTML+=`<div class="msg"><b>Assistant:</b> ${d.a}</div>`}
+async function loadAdmin(){const[s,q,r]=await Promise.all([api('/admin/stats'),api('/admin/queue'),api('/admin/requests')]);
+ $('stats').innerHTML=`<h2>Overview</h2>Waiting today: <b>${s.waiting}</b> · Open requests: <b>${s.pending}</b> · Avg processing: <b>${s.avg_min} min</b><br>Rejected documents: ${s.rejections.map(x=>`${x._id} (${x.n})`).join(', ')||'none'}`;
+ $('aq').innerHTML=q.map(t=>`<div class="row"><span>#${t.token_no} ${t.name}<br><small>${t.purpose}</small></span>${tag(t.status)}</div>`).join('')||'Queue is empty.';
+ $('ar').innerHTML=r.map(x=>`<div class="row"><span>${x.name} · ${x.type}</span><span>${x.status} <button class="p" onclick="adv(${x.id})">Advance</button></span></div>`).join('')||'No open requests.'}
+async function nextTok(){await post('/admin/queue/next');loadAdmin()}async function adv(id){await post('/admin/requests/'+id+'/advance');loadAdmin()}
+</script></body></html>
