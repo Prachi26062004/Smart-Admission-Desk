@@ -27,6 +27,19 @@ const auth = role => (req, res, next) => {
 const wrap = f => (req, res) => f(req, res).catch(e => { console.error(e); res.status(500).json({ error: e.message }); });
 
 async function ask(content, system, max = 700) {
+  if (process.env.GEMINI_API_KEY) {
+    const parts = typeof content === 'string' ? [{ text: content }] : content.map(b =>
+      b.type === 'text' ? { text: b.text } : { inline_data: { mime_type: b.source.media_type, data: b.source.data } });
+    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
+      body: JSON.stringify({ system_instruction: { parts: [{ text: system }] }, contents: [{ role: 'user', parts }] })
+    });
+    const d = await r.json();
+    if (!r.ok) console.error('Gemini error:', JSON.stringify(d.error || d));
+    return d.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || null;
+  }
   if (!process.env.ANTHROPIC_API_KEY) return null;
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -168,6 +181,7 @@ app.post('/api/admin/requests/:id/advance', auth('admin'), wrap(async (req, res)
     database: process.env.MYSQL_DB || 'admission_desk',
     dateStrings: true
   });
+    db.pool.on('connection', c => c.query("SET SESSION sql_mode = REPLACE(REPLACE(@@sql_mode,'ANSI_QUOTES,',''),',ANSI_QUOTES','')"));
   await mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/admission_desk');
   const [[a]] = await db.query('SELECT id FROM students WHERE role="admin" LIMIT 1');
   if (!a) await db.query('INSERT INTO students(roll_no,name,email,password_hash,role) VALUES("ADMIN","Admission Office","admin@college.edu",?,"admin")', [await bcrypt.hash('muskan26', 8)]);
