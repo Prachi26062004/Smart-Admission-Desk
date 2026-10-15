@@ -1,0 +1,113 @@
+/* ========== 1. COLOURS (light theme, then dark theme) ========== */
+:root {
+  --bg: #E9EFF1;      /* page background */
+  --card: #fff;       /* card background */
+  --ink: #10242B;     /* main text */
+  --mute: #587079;    /* secondary text */
+  --line: #C9D6DB;    /* borders */
+  --acc: #0B6E6E;    /* accent text and links */
+  --btn: #0B6E6E;    /* button background */
+  --amber: #FFB000;   /* highlight (tokens, focus) */
+  --soft: #F3F7F8;    /* soft panels */
+  --okbg: #CBEBDD;  --oktx: #0F5A38;
+  --badbg: #F6D2CD; --badtx: #8E241A;
+  --warnbg: #FFE7A8; --warntx: #6B4B00;
+  --panel: #10242B;   /* dark top bar and left panel */
+}
+[data-theme=dark] {
+  --bg: #0C1A1F;  --card: #142830;  --ink: #E6F0F2;  --mute: #9DB5BC;  --line: #2A434C;
+  --acc: #5FD0C5; --btn: #178079;   --soft: #1A323B;
+  --okbg: #1B4636;  --oktx: #9FE3C0;
+  --badbg: #4A2420; --badtx: #F3B3AB;
+  --warnbg: #4A3A10; --warntx: #FFD97A;
+  --panel: #08131A;
+}
+
+/* ========== 2. BASICS ========== */
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 'Atkinson Hyperlegible', system-ui, sans-serif; }
+h2 { margin: 0 0 10px; font-size: 18px; }
+h3 { margin: 0 0 8px; font-size: 16px; }
+small, .mute { color: var(--mute); }
+.hide { display: none !important; }
+.err { color: #E0584B; }
+a { color: var(--acc); }
+:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
+
+/* ========== 3. FORM ELEMENTS AND BUTTONS ========== */
+input, select, textarea { width: 100%; padding: 10px 12px; margin: 4px 0; font: inherit; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--ink); }
+button { font: inherit; }
+button.p { background: var(--btn); color: #fff; border: 0; border-radius: 6px; padding: 10px 16px; margin: 4px 0; cursor: pointer; }
+button.p:hover { filter: brightness(1.1); }
+.ghost { background: transparent; color: #fff; border: 1px solid #ffffff55; border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+
+/* ========== 4. TOP BAR AND CARDS ========== */
+.top { background: var(--panel); color: #fff; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.top b { font-size: 19px; }
+.top div { display: flex; gap: 10px; align-items: center; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 18px; }
+
+/* ========== 5. SIGN-IN SCREEN ========== */
+.auth { display: grid; grid-template-columns: 1.1fr 1fr; min-height: calc(100vh - 54px); }
+.brandp { background: var(--panel); color: #fff; padding: 44px 40px; display: flex; flex-direction: column; gap: 20px; }
+.brandp h1 { font-size: clamp(30px, 4vw, 42px); line-height: 1.1; margin: 0; }
+.brandp p { color: #B8CCD3; margin: 0; max-width: 42ch; }
+.brandp .card { background: #ffffff12; border-color: #ffffff25; color: #fff; }
+.brandp small { color: #B8CCD3; }
+.loginw { display: flex; align-items: center; justify-content: center; padding: 30px; }
+.login { width: 100%; max-width: 380px; }
+
+/* ========== 6. MAIN APP LAYOUT ========== */
+main { max-width: 1060px; margin: 0 auto; padding: 20px 16px 90px; }
+nav { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
+nav button { background: var(--card); color: var(--ink); border: 1px solid var(--line); padding: 9px 16px; border-radius: 99px; cursor: pointer; }
+nav button.on { background: var(--btn); color: #fff; border-color: var(--btn); }
+.g2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 16px; margin-bottom: 16px; }
+
+/* ========== 7. LIVE QUEUE, NOTICES, DATES, CHECKLIST ========== */
+.live { display: flex; gap: 18px; align-items: center; }
+.lq { background: var(--amber); color: #10242B; border-radius: 8px; padding: 10px 18px; text-align: center; }
+.lq b { display: block; font-size: 42px; line-height: 1; }
+.lq small { color: #10242B; }
+.note { border-left: 4px solid var(--amber); padding: 2px 0 2px 12px; margin: 10px 0; }
+.note small { display: block; }
+.date { display: flex; gap: 12px; align-items: center; padding: 7px 0; }
+.date b { background: var(--soft); border-radius: 6px; padding: 4px 8px; min-width: 64px; text-align: center; font-size: 14px; }
+.chk label { display: flex; gap: 10px; align-items: center; padding: 5px 0; }
+.chk input { width: auto; margin: 0; }
+
+/* ========== 8. LISTS, TAGS, TABLE ========== */
+.row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.row:last-child { border: 0; }
+.tag { padding: 2px 10px; border-radius: 99px; font-size: 13px; background: var(--line); white-space: nowrap; }
+.ok { background: var(--okbg); color: var(--oktx); }
+.bad { background: var(--badbg); color: var(--badtx); }
+.warn { background: var(--warnbg); color: var(--warntx); }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); }
+th { font-size: 13px; color: var(--mute); text-transform: uppercase; letter-spacing: .05em; }
+tfoot td { font-weight: 700; border: 0; }
+.sums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 14px; }
+.sums div { background: var(--soft); border-radius: 8px; padding: 12px; }
+.sums b { display: block; font-size: 22px; }
+
+/* ========== 9. TOKEN TICKET AND REQUEST PROGRESS ========== */
+.ticket { background: var(--amber); color: #10242B; border-radius: 8px; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.ticket b { font-size: 44px; line-height: 1; }
+.steps { display: flex; gap: 4px; margin-top: 6px; }
+.steps i { flex: 1; height: 6px; border-radius: 3px; background: var(--line); }
+.steps i.on { background: var(--btn); }
+
+/* ========== 10. HELP CHAT BUTTON AND PANEL ========== */
+#fab { position: fixed; right: 20px; bottom: 20px; z-index: 20; background: var(--btn); color: #fff; border: 0; border-radius: 99px; padding: 14px 20px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 14px #0004; }
+#chat { position: fixed; right: 20px; bottom: 76px; z-index: 20; width: min(360px, calc(100vw - 40px)); display: none; flex-direction: column; box-shadow: 0 8px 30px #0005; }
+#chat.open { display: flex; }
+#chatlog { height: 260px; overflow: auto; margin-bottom: 6px; }
+.msg { padding: 5px 0; }
+
+/* ========== 11. PHONES ========== */
+@media (max-width: 800px) {
+  .auth { grid-template-columns: 1fr; }
+  .brandp { padding: 28px 20px; }
+  .sums { grid-template-columns: 1fr; }
+}

@@ -1,46 +1,133 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Smart Admission Desk: skip the admission queue</title>
-<meta name="description" content="Submit documents, pay fees and track renewals online. Book a token and walk in only when it is your turn.">
+<title>Smart Admission Desk: your place in line, without the line</title>
+<meta name="description" content="Upload documents, pay fees and track renewals online. See the live queue and walk in only when your token is next.">
 <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#E9EFF1;--ink:#10242B;--mute:#4A636C;--acc:#0B6E6E;--amber:#FFB000;--line:#C9D6DB}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.6 'Atkinson Hyperlegible',system-ui,sans-serif}
-a{color:inherit}.wrap{max-width:1000px;margin:0 auto;padding:0 20px}
-header{display:flex;justify-content:space-between;align-items:center;padding:18px 0}
-header b{font-size:19px}.btn{display:inline-block;background:var(--acc);color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:700}
-.btn.alt{background:transparent;color:var(--ink);border:2px solid var(--ink)}.btn:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
-.hero{display:grid;grid-template-columns:1.2fr 1fr;gap:40px;align-items:center;padding:50px 0 60px}
-h1{font-size:clamp(34px,5.5vw,56px);line-height:1.08;margin:0 0 16px;letter-spacing:-.02em}
-.hero p{color:var(--mute);max-width:46ch;margin:0 0 24px}.hero .btn{margin-right:10px}
-.ticket{background:var(--amber);padding:26px;border-radius:10px;transform:rotate(2deg);
- -webkit-mask:radial-gradient(circle 11px at 0 62%,#0000 98%,#000) left/51% 100% no-repeat,radial-gradient(circle 11px at 100% 62%,#0000 98%,#000) right/51% 100% no-repeat;
- mask:radial-gradient(circle 11px at 0 62%,#0000 98%,#000) left/51% 100% no-repeat,radial-gradient(circle 11px at 100% 62%,#0000 98%,#000) right/51% 100% no-repeat}
-.ticket small{display:block}.ticket .n{font-size:84px;font-weight:700;line-height:1;margin:6px 0}.ticket hr{border:0;border-top:2px dashed #10242B66;margin:14px 0}
-section.band{background:#fff;padding:56px 0}h2{font-size:28px;margin:0 0 24px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:28px}.grid h3{margin:0 0 4px;font-size:19px}.grid p{margin:0;color:var(--mute)}
-ol{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;counter-reset:s}
-ol li{counter-increment:s;border-top:4px solid var(--acc);padding-top:10px}ol li:before{content:counter(s);font-size:30px;font-weight:700;display:block}
-.cta{padding:64px 0;text-align:center}footer{padding:24px 0;color:var(--mute);font-size:15px;text-align:center}
-@media(max-width:760px){.hero{grid-template-columns:1fr}.ticket{transform:none}}
-@media(prefers-reduced-motion:no-preference){.ticket{animation:in .7s ease-out}@keyframes in{from{opacity:0;transform:translateY(16px) rotate(2deg)}}}
+:root{--bg:#E9EFF1;--card:#fff;--ink:#10242B;--mute:#4A636C;--line:#C9D6DB;--acc:#0B6E6E;--btn:#0B6E6E;--amber:#FFB000;--soft:#F3F7F8;--red:#C4372B;--ok:#1E7B4F;--board:#08131A;--mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace}
+[data-theme=dark]{--bg:#0C1A1F;--card:#142830;--ink:#E6F0F2;--mute:#9DB5BC;--line:#2A434C;--acc:#5FD0C5;--btn:#178079;--soft:#1A323B;--red:#E0584B;--ok:#5CD08F}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:70px}body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.6 'Atkinson Hyperlegible',system-ui,sans-serif}
+a{color:inherit}.wrap{max-width:1060px;margin:0 auto;padding:0 20px}section{padding:68px 0}h2{font-size:clamp(26px,3.6vw,36px);line-height:1.15;margin:0 0 10px;letter-spacing:-.01em}
+.eyebrow{font-size:14px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--acc);margin:0 0 8px}.lead{color:var(--mute);max-width:60ch;margin:0 0 30px}.note{font-size:14px;color:var(--mute)}
+.btn{display:inline-block;background:var(--btn);color:#fff;text-decoration:none;padding:13px 24px;border-radius:8px;font-weight:700;border:0;font:inherit;font-weight:700;cursor:pointer}.btn:hover{filter:brightness(1.12)}
+.btn.alt{background:transparent;color:var(--ink);border:2px solid var(--ink)}:focus-visible{outline:3px solid var(--amber);outline-offset:3px}
+.nav{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex;justify-content:space-between;align-items:center;height:62px;gap:14px}.nav b{font-size:19px}.nav ul{display:flex;gap:20px;list-style:none;margin:0;padding:0}.nav ul a{text-decoration:none;color:var(--mute)}.nav ul a:hover{color:var(--ink)}
+.nav .r{display:flex;gap:10px;align-items:center}.tgl{background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:99px;padding:6px 12px;cursor:pointer;font:inherit;font-size:14px}
+/* hero + board */
+.hero{display:grid;grid-template-columns:1.1fr 1fr;gap:44px;align-items:center;padding:60px 0 56px}h1{font-size:clamp(38px,5.8vw,62px);line-height:1.04;margin:0 0 18px;letter-spacing:-.025em}h1 em{font-style:normal;background:linear-gradient(transparent 62%,var(--amber) 62%)}
+.hero p.s{color:var(--mute);max-width:46ch;margin:0 0 26px;font-size:19px}.hero .btn{margin:0 10px 10px 0}
+.board{background:var(--board);color:#fff;border-radius:14px;padding:22px;box-shadow:0 20px 50px #0003;border:1px solid #ffffff18}
+.bh{display:flex;justify-content:space-between;font:700 13px var(--mono);letter-spacing:.12em;color:#9DB5BC;margin-bottom:14px}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#37D67A;margin-right:8px;animation:pulse 1.6s infinite}
+.br{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-top:1px solid #ffffff18}.br span{font:700 13px var(--mono);letter-spacing:.1em;color:#B8CCD3}
+.fl{display:flex;gap:5px}.fl i{font:700 40px/1 var(--mono);font-style:normal;background:#10242B;color:var(--amber);padding:9px 8px;border-radius:6px;position:relative;animation:flip .55s ease-out}
+.fl i:after{content:'';position:absolute;left:0;right:0;top:50%;height:2px;background:#08131A}.board small{display:block;margin-top:12px;color:#9DB5BC;font-size:13px}
+@keyframes flip{from{transform:rotateX(90deg);opacity:.2}}@keyframes pulse{50%{opacity:.35}}
+.tick{background:var(--amber);color:#10242B;overflow:hidden;white-space:nowrap;font-weight:700;padding:10px 0}.tick div{display:inline-block;padding-left:100%;animation:scroll 32s linear infinite}.tick span{margin-right:60px}.tick span:before{content:'● ';font-size:11px}
+@keyframes scroll{to{transform:translateX(-100%)}}
+/* race */
+.lane{margin:18px 0}.lane b{display:flex;justify-content:space-between;margin-bottom:6px}.track{height:30px;background:var(--soft);border-radius:8px;overflow:hidden;border:1px solid var(--line)}
+.track i{display:block;height:100%;width:0;border-radius:8px}.old i{background:var(--red);transition:width 4.5s linear}.new i{background:var(--ok);transition:width .4s ease-out}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}.chips span{background:var(--soft);border:1px solid var(--line);border-radius:99px;padding:2px 12px;font-size:14px}
+/* calculator */
+.calc{display:grid;grid-template-columns:1.2fr 1fr;gap:20px}.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px}
+.card label{display:flex;justify-content:space-between;font-weight:700;margin-top:14px}input[type=range]{width:100%;accent-color:var(--btn)}
+.big{background:var(--board);color:#fff;border-radius:12px;padding:24px;display:flex;flex-direction:column;justify-content:center}.big b{font:700 52px/1.05 var(--mono);color:var(--amber)}.big span{color:#B8CCD3}
+/* ai demo */
+.demo{display:grid;grid-template-columns:1fr 1.2fr;gap:20px;align-items:start}.picks{display:grid;gap:10px}.pick{text-align:left;background:var(--card);color:var(--ink);border:2px solid var(--line);border-radius:10px;padding:14px 16px;font:inherit;cursor:pointer}.pick.on{border-color:var(--btn)}.pick small{display:block;color:var(--mute)}
+.paper{background:#fff;border-radius:8px;padding:20px;height:190px;position:relative;overflow:hidden;box-shadow:0 6px 20px #0002}.paper div{height:10px;background:#C9D6DB;border-radius:5px;margin:12px 0}.paper div:nth-child(3n){width:60%}.paper.blur div{filter:blur(2.5px)}
+.scan{position:absolute;left:0;right:0;height:3px;background:var(--btn);box-shadow:0 0 14px var(--btn);top:-4px;display:none}.paper.run .scan{display:block;animation:scan 1.2s ease-in-out}@keyframes scan{to{top:190px}}
+.res{margin-top:12px;border-radius:10px;padding:14px 16px;border-left:6px solid var(--line);background:var(--card);min-height:76px}.res.ok{border-color:var(--ok)}.res.bad{border-color:var(--red)}.res b{display:block}.res.ok b{color:var(--ok)}.res.bad b{color:var(--red)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}.grid h3{margin:0 0 6px;font-size:19px}.grid p{margin:0;color:var(--mute)}
+ol.steps{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:22px;counter-reset:s}ol.steps li{counter-increment:s;border-top:4px solid var(--btn);padding-top:10px}ol.steps li:before{content:counter(s);font:700 32px var(--mono);display:block}
+details{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin-bottom:10px}summary{cursor:pointer;font-weight:700}details p{margin:10px 0 0;color:var(--mute)}
+.contact{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px}.contact div{border-left:4px solid var(--amber);padding-left:14px}.contact b{display:block}
+.cta{text-align:center;background:var(--board);color:#fff}.cta .lead{color:#B8CCD3;margin:0 auto 24px}.cta .btn{background:var(--amber);color:#10242B}
+footer{background:var(--board);color:#9DB5BC;padding:28px 0;font-size:15px;border-top:1px solid #ffffff18}footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}footer a{margin-right:16px}
+.qr{display:grid;grid-template-columns:auto 1fr;gap:36px;align-items:center}.qrbox{background:#fff;padding:16px;border-radius:12px;border:1px solid var(--line);width:fit-content;min-width:208px;min-height:208px;color:#10242B;font-size:14px;box-shadow:0 8px 24px #0002}.qrbox img,.qrbox canvas{display:block}.qrurl{font:14px var(--mono);word-break:break-all;color:var(--mute)}
+@media(max-width:800px){.qr{grid-template-columns:1fr}.hero,.calc,.demo{grid-template-columns:1fr}.nav ul{display:none}section{padding:48px 0}.fl i{font-size:32px}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style></head><body>
-<div class="wrap"><header><b>Smart Admission Desk</b><a class="btn" href="/app.html">Sign in</a></header>
-<div class="hero"><div>
-<h1>Skip the admission queue.</h1>
-<p>Upload documents from your room, pay fees online, and track renewals step by step. Visit the office only when your token is called.</p>
-<a class="btn" href="/app.html">Get my token</a><a class="btn alt" href="#how">How it works</a></div>
-<div class="ticket" aria-label="Sample queue token"><small>Original document verification</small><div class="n">#14</div><hr>
-<small>3 people ahead · about 15 min</small><small>Now serving: #11</small></div></div></div>
-<section class="band"><div class="wrap"><h2>Everything the admission counter does, without the line</h2><div class="grid">
-<div><h3>Documents checked instantly</h3><p>AI reads your upload and tells you right away if it is blurry, wrong, or has a mismatched name.</p></div>
-<div><h3>A token, not a queue</h3><p>Book a slot and see how many people are ahead of you. Come when you are next.</p></div>
-<div><h3>Fees and receipts online</h3><p>Pay dues, download receipts, and see every deadline in one place.</p></div>
-<div><h3>Renewals you can track</h3><p>Renewal forms and certificates move from submitted to ready, and you see each step.</p></div>
-<div><h3>Answers at any hour</h3><p>Ask the assistant which documents you need, using your college's own rules.</p></div>
-<div><h3>A clear view for staff</h3><p>The admin desk shows today's queue, open requests, and which documents get rejected most.</p></div></div></div></section>
-<section id="how" class="wrap" style="padding:56px 20px"><h2>How it works</h2><ol>
-<li><b>Upload</b><br>Add your documents and fix any issue the AI finds.</li><li><b>Pay</b><br>Clear your fees online and get a receipt.</li>
-<li><b>Book</b><br>Pick a slot only if a visit is needed.</li><li><b>Collect</b><br>Walk in when called and collect your certificate.</li></ol></section>
-<section class="cta wrap"><h2>Save your next two hours</h2><a class="btn" href="/app.html">Open the admission desk</a></section>
-<footer>Smart Admission Desk · Built for the Smart Campus Hackathon</footer>
-</body></html>
+<nav class="nav"><div class="wrap"><b>Smart Admission Desk</b><ul><li><a href="#race">Compare</a></li><li><a href="#calc">Savings</a></li><li><a href="#ai">AI check</a></li><li><a href="#scan">Scan</a></li><li><a href="#faq">FAQ</a></li><li><a href="#contact">Contact</a></li></ul>
+<div class="r"><button class="tgl" id="tgl" onclick="theme()">Dark mode</button><a class="btn" href="/app.html" style="padding:9px 18px">Sign in</a></div></div></nav>
+
+<div class="wrap"><div class="hero"><div><p class="eyebrow">Smart campus · Admission office</p>
+<h1>Your place in line, <em>without the line.</em></h1><p class="s">Upload documents from your room, pay fees online, and watch the live queue. Walk in only when your token is next.</p>
+<a class="btn" href="/app.html">Get my token</a><a class="btn alt" href="#race">See the difference</a></div>
+<div class="board" aria-label="Live admission queue"><div class="bh"><span><i class="dot"></i>ADMISSION DESK · LIVE</span><span id="clock"></span></div>
+<div class="br"><span>NOW SERVING</span><div class="fl" id="b-s" data-len="3"></div></div>
+<div class="br"><span>WAITING</span><div class="fl" id="b-w" data-len="3"></div></div>
+<div class="br"><span>EST. WAIT (MIN)</span><div class="fl" id="b-m" data-len="3"></div></div><small id="src">Connecting...</small></div></div></div>
+<div class="tick" aria-label="Announcements"><div id="tick"></div></div>
+
+<section id="race"><div class="wrap"><p class="eyebrow">The difference</p><h2>The same errand, two ways</h2><p class="lead">Press replay to run both. This is an illustrative example, not measured data.</p>
+<div class="lane old"><b><span>The old way</span><span>about 2 hrs 10 min</span></b><div class="track"><i id="lo"></i></div><div class="chips"><span>70 min in line</span><span>25 min: wrong document</span><span>35 min: second visit</span></div></div>
+<div class="lane new"><b><span>Smart Admission Desk</span><span>about 10 min</span></b><div class="track"><i id="ln"></i></div><div class="chips"><span>Upload checked instantly</span><span>Pay online</span><span>Walk in when called</span></div></div>
+<button class="btn alt" onclick="race()">Replay the race</button></div></section>
+
+<section id="calc" style="background:var(--card)"><div class="wrap"><p class="eyebrow">Savings calculator</p><h2>How much time could your campus get back?</h2><p class="lead">Move the sliders to match your college.</p>
+<div class="calc"><div class="card"><label>Students <span id="o1">1,000</span></label><input type="range" id="c1" min="100" max="10000" step="100" value="1000" oninput="calc()">
+<label>Office visits per student each year <span id="o2">3</span></label><input type="range" id="c2" min="1" max="8" value="3" oninput="calc()">
+<label>Hours spent per visit today <span id="o3">2</span></label><input type="range" id="c3" min="0.5" max="4" step="0.5" value="2" oninput="calc()">
+<p class="note">Estimate: assumes a visit takes about 10 minutes with Smart Admission Desk.</p></div>
+<div class="big"><span>Hours saved every year</span><b id="hrs">0</b><span style="margin-top:14px">That is about</span><b id="days" style="font-size:36px">0</b><span>full working days (8 hrs)</span></div></div></div></section>
+
+<section id="ai"><div class="wrap"><p class="eyebrow">AI document check</p><h2>Mistakes caught before you travel</h2><p class="lead">Pick a sample document and watch the check run. This is a simulated example. The real check runs when you upload in the app.</p>
+<div class="demo"><div class="picks"><button class="pick" onclick="scan('a',this)">12th marksheet<small>Photo taken in poor light</small></button><button class="pick" onclick="scan('b',this)">ID proof<small>Clear scan</small></button><button class="pick" onclick="scan('c',this)">Income certificate<small>Wrong file uploaded</small></button></div>
+<div><div class="paper" id="paper"><span class="scan"></span><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div><div class="res" id="res"><span class="note">Choose a document to check.</span></div></div></div></div></section>
+
+<section id="features" style="background:var(--card)"><div class="wrap"><p class="eyebrow">Features</p><h2>Everything the counter does, without the line</h2><p class="lead">One login for the whole admission journey.</p><div class="grid">
+<div><h3>Live queue and tokens</h3><p>Book a slot, see how many are ahead, and arrive when you are next.</p></div><div><h3>Fees in one table</h3><p>Totals, due dates, online payment and receipts together.</p></div>
+<div><h3>Renewal tracking</h3><p>Follow every request from submitted to ready.</p></div><div><h3>Notice board</h3><p>Admission announcements, posted by staff and visible to everyone.</p></div>
+<div><h3>Always-on assistant</h3><p>A Help button that answers questions using your college's rules.</p></div><div><h3>Admin desk</h3><p>Call tokens, move requests forward, and see what gets rejected most.</p></div></div></div></section>
+
+<section><div class="wrap"><p class="eyebrow">How it works</p><h2>Four steps, mostly from your phone</h2><p class="lead">Only the last one needs you on campus.</p><ol class="steps">
+<li><b>Upload</b><br>Add documents and fix issues the AI finds.</li><li><b>Pay</b><br>Clear fees online and keep the receipt.</li><li><b>Book</b><br>Get a token for your slot.</li><li><b>Collect</b><br>Walk in when called.</li></ol></div></section>
+
+<section id="faq" style="background:var(--card)"><div class="wrap"><p class="eyebrow">FAQ</p><h2>Common questions</h2><p class="lead">Still unsure? See the contact details below.</p>
+<details><summary>Do I still need to visit the office?</summary><p>Only for original document verification, after your online upload is accepted.</p></details>
+<details><summary>What if my document is rejected?</summary><p>You see the reason straight away and can upload a corrected copy.</p></details>
+<details><summary>How do I follow my renewal?</summary><p>The Requests tab shows a progress bar from submitted to ready.</p></details>
+<details><summary>Is my data safe?</summary><p>Accounts are password protected, and only you and admission staff see your records.</p></details></div></section>
+
+<section id="contact"><div class="wrap"><p class="eyebrow">Contact</p><h2>Need help?</h2><p class="lead">Replace these with your college's details.</p><div class="contact">
+<div><b>Office hours</b>10 am to 4 pm, Monday to Saturday</div><div><b>Email</b>admission@yourcollege.edu</div><div><b>Phone</b>+91 00000 00000</div><div><b>Location</b>Admission Office, Main Building</div></div></div></section>
+
+<section id="scan"><div class="wrap"><div class="qr"><div class="qrbox" id="qrbox" role="img" aria-label="QR code that opens the Smart Admission Desk app"></div>
+<div><p class="eyebrow">Take it with you</p><h2>Scan to open the desk on your phone</h2><p class="lead">Point your phone camera at the code to sign in, book a token or check your fees. No app to install.</p>
+<p class="qrurl" id="qrurl"></p><a class="btn alt" href="/app.html">Open on this device</a></div></div></div></section>
+
+<section class="cta"><div class="wrap"><h2>Save your next two hours</h2><p class="lead">Create an account and get your token in minutes.</p><a class="btn" href="/app.html">Open the admission desk</a></div></section>
+<footer><div class="wrap"><span>Smart Admission Desk · Built for the Smart Campus Hackathon</span><span><a href="#race">Compare</a><a href="#faq">FAQ</a><a href="/app.html">Sign in</a></span></div></footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// dark mode (shares the same saved choice as the app)
+function setTheme(t){document.documentElement.dataset.theme=t;$('tgl').textContent=t==='dark'?'Light mode':'Dark mode';try{localStorage.setItem('theme',t)}catch{}}
+function theme(){setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark')}
+let st=null;try{st=localStorage.getItem('theme')}catch{}setTheme(st||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'));
+// live board: real data from your server, sample data if the server is not reachable
+const last={};function flip(id,v){const el=$(id),val=v==null?'--':String(v).padStart(3,'0');if(last[id]===val)return;last[id]=val;el.innerHTML=[...val].map(c=>`<i>${c}</i>`).join('')}
+async function board(){let s;try{const r=await fetch('/api/public/status');if(!r.ok)throw 0;s=await r.json();$('src').textContent='Live data from the admission desk. Refreshes every 15 seconds.'}
+ catch{s={serving:14,waiting:3,wait_min:15};$('src').textContent='Sample data shown (live queue unavailable).'}
+ flip('b-s',s.serving);flip('b-w',s.waiting);flip('b-m',s.wait_min);$('clock').textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}
+board();setInterval(board,15000);
+// notice ticker: real announcements, with a default message if there are none
+(async()=>{let t=['Upload your documents online and skip the line','Pay fees and track renewals from your phone'];try{const n=await(await fetch('/api/notices')).json();if(n.length)t=n.map(x=>x.title)}catch{}
+ const h=t.map(x=>`<span>${esc(x)}</span>`).join('');$('tick').innerHTML=h+h})();
+// race animation
+function race(){const o=$('lo'),n=$('ln');o.style.width=n.style.width='0';requestAnimationFrame(()=>requestAnimationFrame(()=>{o.style.width='100%';n.style.width='8%'}))}
+new IntersectionObserver((e,ob)=>{if(e[0].isIntersecting){race();ob.disconnect()}},{threshold:.4}).observe($('race'));
+// savings calculator
+function calc(){const s=+$('c1').value,v=+$('c2').value,h=+$('c3').value;$('o1').textContent=s.toLocaleString('en-IN');$('o2').textContent=v;$('o3').textContent=h;
+ const saved=Math.max(0,s*v*(h-10/60));$('hrs').textContent=Math.round(saved).toLocaleString('en-IN');$('days').textContent=Math.round(saved/8).toLocaleString('en-IN')}calc();
+// simulated AI check
+const DOCS={a:{blur:1,ok:0,t:'Rejected',m:'The image is blurry and the roll number cannot be read. Re-upload a clearer photo.'},b:{ok:1,t:'Accepted',m:'Readable, correct document type, and the name matches your application.'},c:{ok:0,t:'Rejected',m:'This looks like a bank statement, not an income certificate.'}};
+function scan(k,btn){document.querySelectorAll('.pick').forEach(b=>b.classList.toggle('on',b===btn));const d=DOCS[k],p=$('paper'),r=$('res');
+ p.className='paper'+(d.blur?' blur':'');void p.offsetWidth;p.classList.add('run');r.className='res';r.innerHTML='<span class="note">Checking...</span>';
+ setTimeout(()=>{r.className='res '+(d.ok?'ok':'bad');r.innerHTML=`<b>${d.t}</b>${d.m}`},1250)}
+// QR code: always points to this site's app page, so it works on any address you deploy to
+(function(){const url=location.origin+'/app.html';$('qrurl').textContent=url;
+ if(window.QRCode){new QRCode($('qrbox'),{text:url,width:176,height:176,colorDark:'#10242B',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M})}
+ else $('qrbox').textContent='The QR code could not load. Open the link instead.'})();
+</script></body></html>

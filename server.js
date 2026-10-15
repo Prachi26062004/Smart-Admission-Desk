@@ -170,6 +170,32 @@ app.post('/api/admin/requests/:id/advance', auth('admin'), wrap(async (req, res)
   res.json({ ok: true });
 }));
 
+// ---- Notices and public live status
+const Notice = mongoose.model('Notice', new mongoose.Schema(
+  { title: String, text: String }, { timestamps: true }));
+
+// Public: current token being served and how many are waiting
+app.get('/api/public/status', wrap(async (req, res) => {
+  const [[s]] = await db.query(
+    "SELECT (SELECT token_no FROM tokens WHERE slot_date=CURDATE() AND status='serving' LIMIT 1) serving, " +
+    "(SELECT COUNT(*) FROM tokens WHERE slot_date=CURDATE() AND status='waiting') waiting");
+  res.json({ serving: s.serving, waiting: s.waiting, wait_min: s.waiting * 5 });
+}));
+
+// Public: latest announcements
+app.get('/api/notices', wrap(async (req, res) =>
+  res.json(await Notice.find().sort('-createdAt').limit(6))));
+
+// Admin only: post and delete announcements
+app.post('/api/admin/notices', auth('admin'), wrap(async (req, res) => {
+  await Notice.create({ title: req.body.title, text: req.body.text });
+  res.json({ ok: true });
+}));
+app.delete('/api/admin/notices/:id', auth('admin'), wrap(async (req, res) => {
+  await Notice.findByIdAndDelete(req.params.id);
+  res.json({ ok: true });
+}));
+
 // ---- Start: connect MySQL and MongoDB, create admin if missing, then listen
 (async () => {
     db = await mysql.createPool({
