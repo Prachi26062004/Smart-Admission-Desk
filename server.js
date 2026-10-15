@@ -102,10 +102,10 @@ app.get('/api/fees', auth(), wrap(async (req, res) => {
   res.json(f);
 }));
 app.post('/api/fees/:id/pay', auth(), wrap(async (req, res) => { // demo payment: replace with Razorpay test-mode checkout
-  const [[f]] = await db.query('SELECT * FROM fees WHERE id=? AND student_id=? AND status="due"', [req.params.id, req.user.id]);
+  const [[f]] = await db.query('SELECT * FROM fees WHERE id=? AND student_id=? AND status=\'due\'', [req.params.id, req.user.id]);
   if (!f) return res.status(404).json({ error: 'Fee not found or already paid' });
   const receipt = 'RCPT-' + Date.now().toString().slice(-8);
-  await db.query('UPDATE fees SET status="paid" WHERE id=?', [f.id]);
+  await db.query('UPDATE fees SET status=\'paid\' WHERE id=?', [f.id]);
   await db.query('INSERT INTO payments(fee_id,student_id,amount,receipt_no) VALUES(?,?,?,?)', [f.id, req.user.id, f.amount, receipt]);
   res.json({ receipt });
 }));
@@ -113,7 +113,7 @@ app.post('/api/fees/:id/pay', auth(), wrap(async (req, res) => { // demo payment
 // ---- Virtual queue
 app.post('/api/tokens', auth(), wrap(async (req, res) => {
   const { purpose, slot_date, slot_time } = req.body;
-  const [[{ c }]] = await db.query('SELECT COUNT(*) c FROM tokens WHERE slot_date=? AND slot_time=? AND status<>"cancelled"', [slot_date, slot_time]);
+  const [[{ c }]] = await db.query('SELECT COUNT(*) c FROM tokens WHERE slot_date=? AND slot_time=? AND status<>\'cancelled\'', [slot_date, slot_time]);
   if (c >= 5) return res.status(409).json({ error: 'This slot is full. Pick another time.' });
   const [[{ n }]] = await db.query('SELECT COUNT(*)+1 n FROM tokens WHERE slot_date=?', [slot_date]);
   await db.query('INSERT INTO tokens(student_id,purpose,slot_date,slot_time,token_no) VALUES(?,?,?,?,?)', [req.user.id, purpose, slot_date, slot_time, n]);
@@ -153,16 +153,16 @@ app.get('/api/admin/stats', auth('admin'), wrap(async (req, res) => {
   res.json({ ...s, rejections: rej });
 }));
 app.get('/api/admin/queue', auth('admin'), wrap(async (req, res) => {
-  const [q] = await db.query('SELECT t.*,s.name FROM tokens t JOIN students s ON s.id=t.student_id WHERE slot_date=CURDATE() AND status IN("waiting","serving") ORDER BY t.id');
+  const [q] = await db.query('SELECT t.*,s.name FROM tokens t JOIN students s ON s.id=t.student_id WHERE slot_date=CURDATE() AND status IN(\'waiting\',\'serving\') ORDER BY t.id');
   res.json(q);
 }));
 app.post('/api/admin/queue/next', auth('admin'), wrap(async (req, res) => {
-  await db.query('UPDATE tokens SET status="done" WHERE slot_date=CURDATE() AND status="serving"');
-  await db.query('UPDATE tokens SET status="serving" WHERE slot_date=CURDATE() AND status="waiting" ORDER BY id LIMIT 1');
+  await db.query('UPDATE tokens SET status=\'done\' WHERE slot_date=CURDATE() AND status=\'serving\'');
+  await db.query('UPDATE tokens SET status=\'serving\' WHERE slot_date=CURDATE() AND status=\'waiting\' ORDER BY id LIMIT 1');
   res.json({ ok: true });
 }));
 app.get('/api/admin/requests', auth('admin'), wrap(async (req, res) => {
-  const [r] = await db.query('SELECT r.*,s.name FROM requests r JOIN students s ON s.id=r.student_id WHERE status<>"ready" ORDER BY r.id');
+  const [r] = await db.query('SELECT r.*,s.name FROM requests r JOIN students s ON s.id=r.student_id WHERE status<>\'ready\' ORDER BY r.id');
   res.json(r);
 }));
 app.post('/api/admin/requests/:id/advance', auth('admin'), wrap(async (req, res) => {
@@ -183,8 +183,8 @@ app.post('/api/admin/requests/:id/advance', auth('admin'), wrap(async (req, res)
   });
     db.pool.on('connection', c => c.query("SET SESSION sql_mode = REPLACE(REPLACE(@@sql_mode,'ANSI_QUOTES,',''),',ANSI_QUOTES','')"));
   await mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/admission_desk');
-  const [[a]] = await db.query('SELECT id FROM students WHERE role="admin" LIMIT 1');
-  if (!a) await db.query('INSERT INTO students(roll_no,name,email,password_hash,role) VALUES("ADMIN","Admission Office","admin@college.edu",?,"admin")', [await bcrypt.hash('muskan26', 8)]);
+  const [[a]] = await db.query('SELECT id FROM students WHERE role=\'admin\' LIMIT 1');
+  if (!a) await db.query('INSERT INTO students(roll_no,name,email,password_hash,role) VALUES(\'ADMIN\',\'Admission Office\',\'admin@college.edu\',?,\'admin\')', [await bcrypt.hash('muskan26', 8)]);
   const port = process.env.PORT || 3000;
   app.listen(port, () => console.log('Running on http://localhost:' + port));
 })().catch(e => { console.error('Startup failed:', e.message); process.exit(1); });
