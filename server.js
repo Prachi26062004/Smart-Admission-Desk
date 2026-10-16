@@ -52,24 +52,66 @@ async function ask(content, system, max = 700) {
 
 async function verifyDoc(file, docType, student) {
   const buf = fs.readFileSync(file.path);
-  if (buf.length < 15000) return { status: 'rejected', issues: ['File is very small. The scan may be cropped or blurry. Re-upload a clearer copy.'], mode: 'basic' };
   const block = file.mimetype === 'application/pdf' ? 'document' : file.mimetype.startsWith('image/') ? 'image' : null;
   if (!block) return { status: 'rejected', issues: ['Upload a PDF, JPG or PNG.'], mode: 'basic' };
-  const out = await ask(
-    [{ type: block, source: { type: 'base64', media_type: file.mimetype, data: buf.toString('base64') } },
-     { type: 'text', text: `Expected document type: ${docType}. Student name on application: ${student.name}.` }],
-    'You verify admission documents. Reply ONLY with JSON: {"typeMatches":bool,"readable":bool,"nameMatches":bool,"extracted":{"name":"","dob":"","idNumber":""},"issues":["short fix instructions"]}');
-  if (!out) return { status: 'accepted', issues: [], mode: 'demo (no API key, basic checks only)' };
+  if (buf.length < 15000) return { status: 'rejected', issues: ['The file is too small or low quality. Upload a clear, full-page scan or photo.'], mode: 'basic' };
+
+  // Fail closed: if no AI key is set, nothing is auto-accepted
+  if (!process.env.GEMINI_API_KEY && !process.env.ANTHROPIC_API_KEY)
+    return { status: 'review', issues: ['Automatic checking is not set up, so this was sent for manual review.'], mode: 'no-ai' };
+
+  const system = 'You are a strict admission document verifier for an Indian college. Reply ONLY with JSON: ' +
+    '{"typeMatches":bool,"readable":bool,"nameOnDocument":"","nameMatches":bool,"isScreenshotOrScreenPhoto":bool,"appearsEdited":bool,' +
+    '"confidence":"high|medium|low","extracted":{"name":"","rollNumber":"","board":"","year":""},"issues":["short fix instructions"]}. ' +
+    'Be strict. typeMatches is true only if the image clearly is the expected document type. A random photo, selfie, blank paper, ' +
+    'screenshot, or a different document must give typeMatches false. nameMatches is true only if the name on the document is the same ' +
+    'person as the registered name (ignore case, word order and initials). Never guess values you cannot read.';
+
+  let out = null;
+  try {
+    out = await ask(
+      [{ type: block, source: { type: 'base64', media_type: file.mimetype, data: buf.toString('base64') } },
+       { type: 'text', text: `Expected document type: ${docType}. Registered student name: ${student.name}.` }],
+      system, 900);
+  } catch (e) { console.error('AI check error:', e.message); }
+  if (!out) return { status: 'review', issues: ['The automatic check was unavailable, so this was sent for manual review.'], mode: 'ai-unavailable' };
+
   try {
     const j = JSON.parse(out.match(/\{[\s\S]*\}/)[0]);
-    const ok = j.typeMatches && j.readable && j.nameMatches !== false;
-    j.issues = j.issues || [];
-    if (!j.typeMatches) j.issues.push(`This does not look like a ${docType}.`);
-    return { status: ok ? 'accepted' : 'rejected', issues: j.issues, extracted: j.extracted, mode: 'ai' };
+    const problems = [];
+    if (!j.typeMatches) problems.push(`This does not look like a ${docType}.`);
+    if (!j.readable) problems.push('The document is blurry or cut off. Upload a clear, full-page copy.');
+    if (!j.nameOnDocument || j.nameMatches !== true) problems.push(`The name on the document does not match your registered name (${student.name}).`);
+    if (j.isScreenshotOrScreenPhoto) problems.push('Screenshots and photos of a screen are not accepted. Upload a scan or photo of the paper document.');
+    if (j.appearsEdited) problems.push('The document appears to be edited or altered.');
+    if (j.confidence === 'low') problems.push('The check was not confident. Upload a clearer copy.');
+    const issues = problems.length ? [...new Set([...problems, ...(Array.isArray(j.issues) ? j.issues : [])])] : [];
+    return { status: problems.length ? 'rejected' : 'accepted', issues, extracted: j.extracted, mode: 'ai' };
   } catch { return { status: 'review', issues: ['Needs manual review.'], mode: 'ai' }; }
 }
 
-const KB = `Renewal: needs previous year fee receipt, ID card, and no-dues form. Fee deadline: 15th of each month cycle, late fee Rs 50/day. Bonafide certificate ready in 2 working days. Office hours 10am-4pm Mon-Sat. Original documents are verified in person only after online upload is accepted.`;
+// ---- Answers (edit these to match your college). The AI uses them as its only source of truth,
+// and they also work as a built-in fallback when the AI is not available.
+const FAQ = [
+  { k: ['admission', 'admit', 'join', 'apply', 'enroll'], a: 'For new admission bring your 12th marksheet, ID proof (Aadhaar or PAN), 4 passport-size photos, income certificate (only if you want a fee concession) and your transfer certificate. Upload them in the Documents tab first, then book a token only for original document verification.' },
+  { k: ['renewal', 'renew'], a: 'For renewal you need your previous year fee receipt, your college ID card and the no-dues form. Submit a Renewal request in the Requests tab and follow its progress there.' },
+  { k: ['bonafide', 'certificate', 'nodues', 'no-dues', 'dues'], a: 'Bonafide and no-dues certificates are requested from the Requests tab. A bonafide certificate is ready in about 2 working days. Bring your college ID card and latest fee receipt when you collect it.' },
+  { k: ['fee', 'fees', 'pay', 'payment', 'receipt', 'deadline', 'late', 'due'], a: 'Open the Fees tab to see every fee, its due date and your total. Click Pay now to pay online and get a receipt number. Fees are due by the 15th of each cycle and a late fee of Rs 50 per day applies after that.' },
+  { k: ['token', 'queue', 'visit', 'slot', 'wait', 'book', 'counter'], a: 'Book a visit in the Queue tab. Choose a purpose, date and time and you get a token. The live board shows who is being served and how many people are ahead of you, and each person ahead adds about 5 minutes of waiting.' },
+  { k: ['upload', 'reject', 'rejected', 'blurry', 'verify', 'verification', 'original'], a: 'Upload clear, full-page photos or scans in the Documents tab. If a document is rejected you will see the reason, such as a blurry image or a name that does not match, and you can upload a corrected copy. Original documents are verified in person only after the online upload is accepted.' },
+  { k: ['hours', 'time', 'timing', 'open', 'contact', 'phone', 'email', 'where', 'location', 'office'], a: 'The admission office is open 10 am to 4 pm, Monday to Saturday, in the Admission Office, Main Building. Email: admission@yourcollege.edu.' }
+];
+const KB = FAQ.map(f => f.a).join('\n');
+const FALLBACK = 'I can help with admission documents, renewals, certificates, fees, tokens and office hours. Ask about one of these, or contact the admission office.';
+function faqAnswer(q) {
+  const words = String(q).toLowerCase().match(/[a-z-]+/g) || [];
+  let best = null, bestScore = 0;
+  for (const f of FAQ) {
+    const score = f.k.filter(k => words.some(w => w.startsWith(k))).length;
+    if (score > bestScore) { best = f; bestScore = score; }
+  }
+  return best ? best.a : FALLBACK;
+}
 
 // ---- Auth
 app.post('/api/auth/register', wrap(async (req, res) => {
@@ -137,8 +179,11 @@ app.get('/api/requests', auth(), wrap(async (req, res) => {
 
 // ---- AI assistant
 app.post('/api/chat', auth(), wrap(async (req, res) => {
-  const a = await ask(req.body.q, `You are the admission office assistant. Answer briefly using ONLY this info; if unknown, say to contact the office.\n${KB}`, 300)
-    || 'Demo mode: add ANTHROPIC_API_KEY to get live answers. Meanwhile: ' + KB.split('. ')[0] + '.';
+  let a = null;
+  try {
+    a = await ask(req.body.q, `You are the admission office assistant. Answer briefly and clearly using ONLY the information below. If the answer is not there, say to contact the admission office.\n${KB}`, 400);
+  } catch (e) { console.error('Chat AI error:', e.message); }
+  if (!a) a = faqAnswer(req.body.q);   // built-in answers when the AI is unavailable
   await Chat.create({ studentId: req.user.id, q: req.body.q, a });
   res.json({ a });
 }));
@@ -195,7 +240,11 @@ app.delete('/api/admin/notices/:id', auth('admin'), wrap(async (req, res) => {
   await Notice.findByIdAndDelete(req.params.id);
   res.json({ ok: true });
 }));
-
+app.get('/api/health', (req, res) => res.json({
+  gemini_key_set: !!process.env.GEMINI_API_KEY,
+  anthropic_key_set: !!process.env.ANTHROPIC_API_KEY,
+  gemini_model: process.env.GEMINI_MODEL || 'gemini-2.5-flash'
+}));
 // ---- Start: connect MySQL and MongoDB, create admin if missing, then listen
 (async () => {
     db = await mysql.createPool({
