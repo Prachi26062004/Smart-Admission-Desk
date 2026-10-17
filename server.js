@@ -143,14 +143,7 @@ app.get('/api/fees', auth(), wrap(async (req, res) => {
   const [f] = await db.query('SELECT f.*,p.receipt_no FROM fees f LEFT JOIN payments p ON p.fee_id=f.id WHERE f.student_id=?', [req.user.id]);
   res.json(f);
 }));
-app.post('/api/fees/:id/pay', auth(), wrap(async (req, res) => { // demo payment: replace with Razorpay test-mode checkout
-  const [[f]] = await db.query('SELECT * FROM fees WHERE id=? AND student_id=? AND status=\'due\'', [req.params.id, req.user.id]);
-  if (!f) return res.status(404).json({ error: 'Fee not found or already paid' });
-  const receipt = 'RCPT-' + Date.now().toString().slice(-8);
-  await db.query('UPDATE fees SET status=\'paid\' WHERE id=?', [f.id]);
-  await db.query('INSERT INTO payments(fee_id,student_id,amount,receipt_no) VALUES(?,?,?,?)', [f.id, req.user.id, f.amount, receipt]);
-  res.json({ receipt });
-}));
+
 
 // ---- Virtual queue
 app.post('/api/tokens', auth(), wrap(async (req, res) => {
@@ -245,6 +238,46 @@ app.get('/api/health', (req, res) => res.json({
   anthropic_key_set: !!process.env.ANTHROPIC_API_KEY,
   gemini_model: process.env.GEMINI_MODEL || 'gemini-2.5-flash'
 }));
+
+// ---- Razorpay payments (test keys = no real money, live keys = real money)
+const crypto = require('crypto');
+const RZP_ID = process.env.RAZORPAY_KEY_ID, RZP_SECRET = process.env.RAZORPAY_KEY_SECRET;
+const PayOrder = mongoose.model('PayOrder', new mongoose.Schema(
+  { orderId: String, feeId: Number, studentId: Number, amount: Number }, { timestamps: true }));
+
+// Step 1: the server creates a Razorpay order for one fee (the amount comes from the database, never from the browser)
+app.post('/api/fees/:id/order', auth(), wrap(async (req, res) => {
+  if (!RZP_ID || !RZP_SECRET) return res.status(503).json({ error: 'Online payments are not set up yet. Please pay at the office.' });
+  const [[f]] = await db.query("SELECT * FROM fees WHERE id=? AND student_id=? AND status='due'", [req.params.id, req.user.id]);
+  if (!f) return res.status(404).json({ error: 'Fee not found or already paid' });
+  const r = await fetch('https://api.razorpay.com/v1/orders', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: 'Basic ' + Buffer.from(RZP_ID + ':' + RZP_SECRET).toString('base64') },
+    body: JSON.stringify({ amount: Math.round(Number(f.amount) * 100), currency: 'INR', receipt: 'fee_' + f.id + '_' + Date.now() })
+  });
+  const order = await r.json();
+  if (!r.ok) { console.error('Razorpay order error:', JSON.stringify(order)); return res.status(502).json({ error: 'Could not start the payment. Please try again.' }); }
+  await PayOrder.create({ orderId: order.id, feeId: f.id, studentId: req.user.id, amount: Number(f.amount) });
+  res.json({ order_id: order.id, amount: order.amount, key: RZP_ID });
+}));
+
+// Step 2: after paying, the server checks Razorpay's signature. Only then is the fee marked paid.
+app.post('/api/fees/:id/verify', auth(), wrap(async (req, res) => {
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+  if (!RZP_SECRET || !razorpay_order_id || !razorpay_payment_id || !razorpay_signature) return res.status(400).json({ error: 'Missing payment details.' });
+  const expected = crypto.createHmac('sha256', RZP_SECRET).update(razorpay_order_id + '|' + razorpay_payment_id).digest('hex');
+  const given = String(razorpay_signature);
+  if (given.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(given)))
+    return res.status(400).json({ error: 'Payment could not be verified.' });
+  const po = await PayOrder.findOne({ orderId: razorpay_order_id, feeId: +req.params.id, studentId: req.user.id });
+  if (!po) return res.status(400).json({ error: 'This payment does not match the fee.' });
+  const [[f]] = await db.query("SELECT * FROM fees WHERE id=? AND student_id=? AND status='due'", [req.params.id, req.user.id]);
+  if (!f) return res.status(409).json({ error: 'This fee is already marked paid.' });
+  await db.query("UPDATE fees SET status='paid' WHERE id=?", [f.id]);
+  await db.query('INSERT INTO payments(fee_id,student_id,amount,receipt_no) VALUES(?,?,?,?)', [f.id, req.user.id, f.amount, razorpay_payment_id]);
+  res.json({ receipt: razorpay_payment_id });
+}));
+
 // ---- Start: connect MySQL and MongoDB, create admin if missing, then listen
 (async () => {
     db = await mysql.createPool({
@@ -258,8 +291,14 @@ app.get('/api/health', (req, res) => res.json({
   });
     db.pool.on('connection', c => c.query("SET SESSION sql_mode = REPLACE(REPLACE(@@sql_mode,'ANSI_QUOTES,',''),',ANSI_QUOTES','')"));
   await mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/admission_desk');
-  const [[a]] = await db.query('SELECT id FROM students WHERE role=\'admin\' LIMIT 1');
-  if (!a) await db.query('INSERT INTO students(roll_no,name,email,password_hash,role) VALUES(\'ADMIN\',\'Admission Office\',\'admin@college.edu\',?,\'admin\')', [await bcrypt.hash('muskan26', 8)]);
+    // Admin account: email and password come from .env / Render environment variables
+  if (process.env.ADMIN_PASSWORD) {
+    const email = process.env.ADMIN_EMAIL || 'admin@college.edu';
+    const hash = await bcrypt.hash(process.env.ADMIN_PASSWORD, 8);
+    const [[a]] = await db.query("SELECT id FROM students WHERE role='admin' LIMIT 1");
+    if (a) await db.query('UPDATE students SET email=?, password_hash=? WHERE id=?', [email, hash, a.id]);
+    else await db.query("INSERT INTO students(roll_no,name,email,password_hash,role) VALUES('ADMIN','Admission Office',?,?,'admin')", [email, hash]);
+  } else console.warn('ADMIN_PASSWORD is not set, so no admin account was created or updated.');
   const port = process.env.PORT || 3000;
   app.listen(port, () => console.log('Running on http://localhost:' + port));
 })().catch(e => { console.error('Startup failed:', e.message); process.exit(1); });

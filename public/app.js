@@ -271,3 +271,127 @@ async function deleteNotice(id) {
   await api('/admin/notices/' + id, { method: 'DELETE' });
   loadAdmin();
 }
+
+// ===== PAYMENTS (Razorpay): paste this ONCE at the very bottom of the script =====
+(function () {
+  const money = n => 'Rs ' + Number(n).toLocaleString('en-IN');
+  const dateOf = d => new Date(d).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  const byId = x => document.getElementById(x);
+  let row = null;   // the fee being paid
+
+  // The pop-up and its styles are created here, so no HTML or CSS edits are needed
+  const style = document.createElement('style');
+  style.textContent = `
+    .pay-ov{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;padding:16px;z-index:50}
+    .pay-ov.show{display:flex}
+    .pay-box{background:var(--card,#fff);color:var(--ink,#10242B);border:1px solid var(--line,#C9D6DB);border-radius:12px;padding:22px;width:100%;max-width:420px}
+    .pay-box h2{margin:0 0 10px;font-size:18px}
+    .pay-row{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--line,#C9D6DB)}
+    .pay-note{color:var(--mute,#587079);font-size:14px}
+    .pay-btns{display:flex;gap:10px;margin-top:12px}
+    .pay-btns button{font:inherit;border-radius:6px;padding:10px 16px;cursor:pointer;border:1px solid var(--line,#C9D6DB);background:transparent;color:inherit}
+    .pay-btns button.go{background:var(--btn,#0B6E6E);color:#fff;border:0}
+    .pay-btns button:disabled{opacity:.6;cursor:wait}
+    .pay-ok{width:56px;height:56px;border-radius:50%;background:var(--okbg,#CBEBDD);color:var(--oktx,#0F5A38);display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 10px}
+    .pay-err{color:#E0584B;margin:8px 0 0}
+    @media print{body *{visibility:hidden}.pay-box,.pay-box *{visibility:visible}.pay-box{position:absolute;left:0;top:0;width:100%;max-width:none;border:0}.pay-btns{display:none}}`;
+  document.head.appendChild(style);
+  const overlay = document.createElement('div');
+  overlay.className = 'pay-ov';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.innerHTML = '<div class="pay-box"></div>';
+  document.body.appendChild(overlay);
+  const box = overlay.firstChild;
+
+  function loadRazorpay() {
+    return new Promise((ok, fail) => {
+      if (window.Razorpay) return ok();
+      const s = document.createElement('script');
+      s.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      s.onload = ok;
+      s.onerror = () => fail(new Error('Could not load the payment window. Check your internet connection.'));
+      document.head.appendChild(s);
+    });
+  }
+
+  function openPay(id) {
+    row = fees.find(f => Number(f.id) === Number(id));
+    if (!row) return;
+    box.innerHTML = `
+      <h2>Confirm payment</h2>
+      <div class="pay-row"><span>${esc(row.label)}<br><small>Due ${dateOf(row.due_date)}</small></span><b>${money(row.amount)}</b></div>
+      <p class="pay-note">You will pay securely through Razorpay using UPI, card or net banking.</p>
+      <div class="pay-btns"><button class="go" id="pay-go">Pay ${money(row.amount)}</button><button id="pay-cancel">Cancel</button></div>
+      <p class="pay-err" id="pay-err"></p>`;
+    byId('pay-go').onclick = startPay;
+    byId('pay-cancel').onclick = closePay;
+    overlay.classList.add('show');
+  }
+
+  function closePay() {
+    overlay.classList.remove('show');
+    if (typeof loadFees === 'function') loadFees();
+  }
+
+  function showReceipt(paymentId) {
+    box.innerHTML = `
+      <div class="pay-ok">&#10003;</div>
+      <h2 style="text-align:center">Payment successful</h2>
+      <div class="pay-row"><span>Payment ID</span><b>${esc(paymentId)}</b></div>
+      <div class="pay-row"><span>Student</span><b>${esc(byId('who').textContent)}</b></div>
+      <div class="pay-row"><span>Fee</span><b>${esc(row.label)}</b></div>
+      <div class="pay-row"><span>Amount</span><b>${money(row.amount)}</b></div>
+      <div class="pay-row"><span>Date</span><b>${new Date().toLocaleString()}</b></div>
+      <div class="pay-btns"><button class="go" id="pay-print">Print or save as PDF</button><button id="pay-done">Done</button></div>`;
+    byId('pay-print').onclick = () => window.print();
+    byId('pay-done').onclick = closePay;
+  }
+
+  function showFailure(paymentId) {
+    box.innerHTML = `
+      <h2>We could not confirm your payment</h2>
+      <p>If money was deducted, do not pay again. Contact the admission office with this payment ID: <b>${esc(paymentId)}</b></p>
+      <div class="pay-btns"><button id="pay-done">Close</button></div>`;
+    byId('pay-done').onclick = closePay;
+  }
+
+  async function startPay() {
+    const go = byId('pay-go'), err = byId('pay-err');
+    const reset = () => { go.disabled = false; go.textContent = 'Pay ' + money(row.amount); };
+    go.disabled = true;
+    go.textContent = 'Opening secure checkout...';
+    err.textContent = '';
+    try {
+      await loadRazorpay();
+      const o = await post('/fees/' + row.id + '/order');            // 1. server creates the order
+      const rzp = new Razorpay({                                      // 2. Razorpay's own payment window
+        key: o.key, amount: o.amount, currency: 'INR', order_id: o.order_id,
+        name: 'Smart Admission Desk', description: row.label,
+        prefill: { name: byId('who').textContent },
+        theme: { color: '#0B6E6E' },
+        handler: async resp => {                                      // 3. paid: the server verifies it
+          try {
+            const r = await post('/fees/' + row.id + '/verify', resp);
+            showReceipt(r.receipt);
+          } catch (e) { showFailure(resp.razorpay_payment_id); }
+        },
+        modal: { ondismiss: reset }
+      });
+      rzp.on('payment.failed', r => { err.textContent = (r.error && r.error.description) || 'Payment failed. Please try again.'; reset(); });
+      rzp.open();
+    } catch (e) {
+      err.textContent = e.message;
+      reset();
+    }
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && overlay.classList.contains('show')) closePay();
+  });
+
+  // Make the existing "Pay now" buttons use the new pop-up (works whatever the old function was called)
+  window.openPay = openPay;
+  window.payFee = openPay;
+  window.pay = openPay;
+})();
